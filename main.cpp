@@ -5,59 +5,83 @@
 
 #include <stdio.h>
 #include <math.h>
-
-double dist(struct Point, struct Point);
-double angle(struct Point, struct Point, struct Point);
-struct Point makePoint(double, double, double);
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+#include <iomanip>
+#include <string>
+#include <string.h>
+#include <vector>
+#include <stdio.h>
+using namespace std;
 
 struct Point {
-    double x;
-    double y;
-    double z;
+    float x;
+    float y;
+    float z;
 };
 
-struct AA {
-    Point N;
-    Point CA;
-    Point C;
-    Point O;
-    Point H;
+struct Atom {
+    Point pos;
+    char atom_name[5];
+    int serial_id;
+    int aa_id;
 };
 
-struct edge {
-    Point a;
-    Point b;
-};
+float dist(struct Point, struct Point);
+float angle(struct Point, struct Point, struct Point);
+void print_atom(struct Atom);
+vector<struct Atom> load_pdb_file(char*);
 
 int main(int argc, char* argv[]){
-    struct Point a = makePoint(1,0,0);
-    struct Point b = makePoint(0,0,1);
-    struct Point c = makePoint(0,1,0);
-    printf("%f\n", dist(a, b));
+    // open a file, print its contents
+    if(argc == 2){
+        vector<struct Atom> atoms = load_pdb_file(argv[1]); 
+    } else {
+        cerr << "Please provide a filename" << endl;
+        return 1;
+    }
     return 0;
 }
 
-struct Point makePoint(double x, double y, double z){
-    struct Point p;
-    p.x = x;
-    p.y = y;
-    p.z = z;
-    return p;
+vector<struct Atom> load_pdb_file(char* filename){
+    vector<Atom> atoms;
+    ifstream infile(filename, ios::in);
+    string line;
+    while(getline(infile, line)){
+        if(line.substr(0,4) != "ATOM")
+            continue;
+        struct Atom atom;
+        sscanf(line.c_str(),
+               "%*s %d %5s %*s %*s %d %f %f %f",
+               &atom.serial_id, 
+               atom.atom_name,
+               &atom.aa_id,
+               &atom.pos.x, &atom.pos.y, &atom.pos.z
+              );
+        atoms.push_back(atom);
+    }
+    return atoms;
 }
 
-double dist(struct Point a, struct Point b){
+float dist(struct Point a, struct Point b){
     return sqrt((a.x - b.x) * (a.x - b.x) + 
                 (a.y - b.y) * (a.y - b.y) +
                 (a.z - b.z) * (a.z - b.z));
 }
 
-double angle(struct Point a, struct Point b, struct Point c){
+float angle(struct Point a, struct Point b, struct Point c){
     return 0;
+}
+
+void print_atom(struct Atom a){
+    cout << a.atom_name;
+    cout << "\t(" << a.pos.x << "," << a.pos.y << "," << a.pos.z << ")"; 
+    cout << "\t(" << a.serial_id << "," << a.aa_id << ")" << endl;
 }
 
 
 /*
- * Functions
  *
  * Atom section columns:
  * 1.  ATOM
@@ -73,7 +97,22 @@ double angle(struct Point a, struct Point b, struct Point c){
  * 11. tempFactor
  * 12. element + charge
  *
- * 1. load the data
- *      in - filename
- *      out - 
+ * Rotater function
+ * 1. find a rotation matrix
+ * 2. select all points to be rotated (i.e. those downstream of rotating bond), express as a matrix
+ * 3. multiply rotation matrix by point matrix
  */
+// void rotate(int bondid, Matrix protein, rotation angle)
+
+// struct AA {
+//     Point N;
+//     Point CA;
+//     Point C;
+//     Point O;
+//     Point H;
+// };
+// 
+// struct edge {
+//     Point a;
+//     Point b;
+// };
