@@ -25,6 +25,7 @@ struct Point
 struct Atom
 {
     Point pos;
+    char residue[4];
     char atom_name[5];
     int serial_id;
     int aa_id;
@@ -32,17 +33,19 @@ struct Atom
 
 
 struct Peptide {
+    char residue[4];
     Point N;
     Point CA;
     Point C;
     Point O;
 };
 
+void print_atom(struct Atom);
+void print_coor(float*);
 
 float dist(struct Point, struct Point);
 float angle(struct Point, struct Point, struct Point);
 float torsion_angle(struct Point, struct Point, struct Point, struct Point);
-void print_atom(struct Atom);
 vector<struct Atom> load_pdb_file(char*);
 vector<struct Peptide> get_backbone(vector<struct Atom>);
 int print_backbone_statistics(vector<struct Peptide>);
@@ -79,9 +82,10 @@ vector<struct Atom> load_pdb_file(char* filename)
             continue;
         struct Atom atom;
         sscanf(line.c_str(),
-               "%*s %d %5s %*s %*s %d %f %f %f",
+               "%*s %d %5s %3s %*s %d %f %f %f",
                &atom.serial_id, 
                atom.atom_name,
+               atom.residue,
                &atom.aa_id,
                &atom.pos.x, &atom.pos.y, &atom.pos.z
               );
@@ -111,25 +115,8 @@ float angle(struct Point a, struct Point b, struct Point c)
     return theta * (180 / PI);
 }
 
-/*
- * Setting points a, b, c in a plane, calculates torsion angle of d about the bc axis
- */
-float torsion_angle(struct Point a, struct Point b, struct Point c, struct Point d)
-{
-    float ab[3], ac[3], Ua[3];
-    tovector(a, b, ab);
-    tovector(a, c, ac);
-    cross(ab, ac, Ua);
-
-    float dc[3], db[3], Ub[3];
-    tovector(d, c, dc);
-    tovector(d, b, db);
-    cross(ab, ac, Ua);
-
-    // angle = acos( dot(Ua, Ub) / (edge_length(Ua) * edge_length(Ub)) )
-
-    // return angle * (180 / PI);
-    return 1;
+void print_coor(float* x){
+    printf("%f,%f,%f\n", x[0], x[1], x[2]);
 }
 
 void tovector(Point a, Point b, float * v){
@@ -157,7 +144,7 @@ void cross(float* a, float* b, float* out){
 }
 
 float edge_length(float* a){
-    return pow(a[0] * a[0] + a[1] * a[1] + a[2] * a[2], 0.5);
+    return float(pow(a[0] * a[0] + a[1] * a[1] + a[2] * a[2], 0.5));
 }
 
 float dot(float* a, float* b){
@@ -174,6 +161,8 @@ vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
             struct Peptide pep;
             backbone.push_back(pep);
             backbone[j].N = atoms[i].pos;
+            // TODO I'll be damned to hell for doing this ...
+            memcpy(backbone[j].residue, atoms[i].residue, 4);
         }
         else if(strcmp(atoms[i].atom_name, "CA") == 0){
             backbone[j].CA = atoms[i].pos;
@@ -190,20 +179,38 @@ vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
 }
 
 
-void print_atom(struct Atom a)
+/*
+ * Setting points a, b, c in a plane, calculates torsion angle of d about the bc axis
+ */
+float torsion_angle(struct Point a, struct Point b, struct Point c, struct Point d)
 {
-    cout << a.atom_name;
-    cout << "\t(" << a.pos.x << "," << a.pos.y << "," << a.pos.z << ")"; 
-    cout << "\t(" << a.serial_id << "," << a.aa_id << ")" << endl;
+    float ab[3], ac[3], Ua[3];
+    tovector(a, b, ab);
+    tovector(a, c, ac);
+    cross(ab, ac, Ua);
+
+    float dc[3], db[3], Ub[3];
+    tovector(d, c, dc);
+    tovector(d, b, db);
+    cross(dc, db, Ub);
+
+    float t_angle = acos( dot(Ua, Ub) / (edge_length(Ua) * edge_length(Ub)) );
+
+    return t_angle * (180 / PI);
 }
 
 
 int print_backbone_statistics(vector<struct Peptide> b){
+    printf(
+        "%s %s %s %s %s %s %s %s %s %s\n",
+        "ind", "N-CA", "CA-C", "C-N", "tau", "som", "phi", "psi", "omega", "aa"
+    );
+    float psi, phi;
     for(int i = 0; i < b.size(); i++){
         printf(
-            "%d\t%f\t%f\t%f\t%f\t%f\t%f\n",
+            "%d %f %f %f %f %f %f %f %f %s\n",
             // Peptide number
-            i,
+            i + 1,
             // N -> CA bond length
             dist(b[i].N, b[i].CA),
             // CA -> C bond length
@@ -214,9 +221,25 @@ int print_backbone_statistics(vector<struct Peptide> b){
             angle(b[i].N, b[i].CA, b[i].C),
             // CA-C-O angle
             angle(b[i].CA, b[i].C, b[i].O),
-            // psi torsion angle
-            torsion_angle(b[i].N, b[i].CA, b[i].C, b[i].O)
+            // phi torsion angle - C- _ N _ CA _ C
+            i > 0 ? torsion_angle(b[i-1].C, b[i].N, b[i].CA, b[i].C) : (float)999,
+            // psi torsion angle - N _ CA _ C _ N+
+            (i + 1) < b.size() ? torsion_angle(b[i].N, b[i].CA, b[i].C, b[i+1].N) : (float)999,
+            // omega torsion angle - CA _ C _ N+ _ CA+
+            (i + 1) < b.size() ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (float)999,
+            // residue three letter name
+            b[i].residue
         );
     }
     return 1;
 }
+
+
+void print_atom(struct Atom a)
+{
+    cout << a.atom_name;
+    cout << "\t(" << a.pos.x << "," << a.pos.y << "," << a.pos.z << ")"; 
+    cout << "\t(" << a.serial_id << "," << a.aa_id << ")" << endl;
+}
+
+
