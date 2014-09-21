@@ -27,6 +27,7 @@ struct Atom
 {
     pnt pos;
     char residue[4];
+    char element[3];
     char atom_name[5];
     int serial_id;
     int aa_id;
@@ -220,6 +221,11 @@ int print_backbone_statistics(vector<struct Peptide> b){
 }
 
 
+void print_mindist(vector<struct Atom> a){
+    
+}
+
+
 vector<struct Atom> load_pdb_file()
 {
     vector<Atom> atoms;
@@ -230,12 +236,13 @@ vector<struct Atom> load_pdb_file()
             continue;
         struct Atom atom;
         sscanf(line.c_str(),
-               "%*s %d %5s %3s %*s %d %f %f %f",
+               "%*s %d %5s %3s %*s %d %f %f %f %*f %*f %*f %1s",
                &atom.serial_id, 
                atom.atom_name,
                atom.residue,
                &atom.aa_id,
-               &atom.pos.x, &atom.pos.y, &atom.pos.z
+               &atom.pos.x, &atom.pos.y, &atom.pos.z,
+               &atom.element
               );
         atoms.push_back(atom);
     }
@@ -261,8 +268,8 @@ int main(int argc, char* argv[])
         return 1;
     }
     else if(argc > 1 && strcmp(argv[1], "mindist") == 0){ 
-        fprintf(stderr, "not implemented\n");
-        return 1;
+        atoms = load_pdb_file(); 
+        print_mindist(atoms);
     }
     else {
         fprintf(stderr, "Please provide an option [bstat, rotate, chi, mindist]\n");
