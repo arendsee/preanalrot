@@ -20,11 +20,12 @@ struct Point
     float y;
     float z;
 };
+typedef struct Point pnt;
 
 
 struct Atom
 {
-    Point pos;
+    pnt pos;
     char residue[4];
     char atom_name[5];
     int serial_id;
@@ -34,79 +35,34 @@ struct Atom
 
 struct Peptide {
     char residue[4];
-    Point N;
-    Point CA;
-    Point C;
-    Point O;
+    pnt N;
+    pnt CA;
+    pnt C;
+    pnt O;
 };
 
-void print_atom(struct Atom);
-void print_coor(float*);
 
-float dist(struct Point, struct Point);
-float angle(struct Point, struct Point, struct Point);
-float torsion_angle(struct Point, struct Point, struct Point, struct Point);
-vector<struct Atom> load_pdb_file(char*);
-vector<struct Peptide> get_backbone(vector<struct Atom>);
-int print_backbone_statistics(vector<struct Peptide>);
-void tovector(Point, Point, float*);
-void vadd(float*, float*, float*);
-void vsub(float*, float*, float*);
-void cross(float*, float*, float*);
-float dot(float*, float*);
-float edge_length(float* a);
-
-int main(int argc, char* argv[])
-{
-    vector<struct Atom> atoms;
-    // open a file, print its contents
-    if(argc == 2){
-        atoms = load_pdb_file(argv[1]); 
-    } else {
-        cerr << "Please provide a filename" << endl;
-        return 1;
-    }
-    vector<struct Peptide> backbone = get_backbone(atoms);
-    print_backbone_statistics(backbone);
-    return 0;
+/*
+ * TODO delete this debugging function
+ */
+void ppnt(pnt p){
+    printf("%f, %f, %f\n", p.x, p.y, p.x); 
 }
 
-
-vector<struct Atom> load_pdb_file(char* filename)
-{
-    vector<Atom> atoms;
-    ifstream infile(filename, ios::in);
-    string line;
-    while(getline(infile, line)){
-        if(line.substr(0,4) != "ATOM")
-            continue;
-        struct Atom atom;
-        sscanf(line.c_str(),
-               "%*s %d %5s %3s %*s %d %f %f %f",
-               &atom.serial_id, 
-               atom.atom_name,
-               atom.residue,
-               &atom.aa_id,
-               &atom.pos.x, &atom.pos.y, &atom.pos.z
-              );
-        atoms.push_back(atom);
-    }
-    return atoms;
-}
-
-
-float dist(struct Point a, struct Point b)
+/*
+ * Calculate distance between two points
+ */
+float dist(pnt a, pnt b)
 {
     return sqrt((a.x - b.x) * (a.x - b.x) + 
                 (a.y - b.y) * (a.y - b.y) +
                 (a.z - b.z) * (a.z - b.z));
 }
 
-
 /*
  * Solve for the angle between points a, b, and c
  */
-float angle(struct Point a, struct Point b, struct Point c)
+float angle(pnt a, pnt b, pnt c)
 {
     float ab = dist(a, b);
     float bc = dist(b, c);
@@ -115,43 +71,75 @@ float angle(struct Point a, struct Point b, struct Point c)
     return theta * (180 / PI);
 }
 
-void print_coor(float* x){
-    printf("%f,%f,%f\n", x[0], x[1], x[2]);
+
+/*
+ * Adds two vectors
+ */
+pnt vadd(pnt a, pnt b){
+    pnt out;
+    out.x = a.x + b.x;
+    out.y = a.y + b.y;
+    out.z = a.z + b.z;
+    return out;
 }
 
-void tovector(Point a, Point b, float * v){
-    v[0] = b.x - a.x;
-    v[1] = b.y - a.y;
-    v[2] = b.z - a.z;
+/*
+ * Subtracts two vectors
+ */
+pnt vsub(pnt a, pnt b){
+    pnt out;
+    out.x = a.x - b.x;
+    out.y = a.y - b.y;
+    out.z = a.z - b.z;
+    return out;
 }
 
-void vadd(float* a, float* b, float * out){
-    out[0] = a[0] + b[0];
-    out[1] = a[1] + b[1];
-    out[2] = a[2] + b[2];
+/*
+ * Calculate cross-product of two vectors
+ */
+pnt cross(pnt a, pnt b){
+    pnt out;
+    out.x = a.y * b.z - a.z * b.y;
+    out.y = a.z * b.x - a.x * b.z;
+    out.z = a.x * b.y - a.y * b.x;
+    return out;
 }
 
-void vsub(float* a, float* b, float* out){
-    out[0] = a[0] - b[0];
-    out[1] = a[1] - b[1];
-    out[2] = a[2] - b[2];
+/*
+ * Calculate ||v||
+ */
+float edge_length(pnt a){
+    return float(pow(a.x * a.x + a.y * a.y + a.z * a.z, 0.5));
 }
 
-void cross(float* a, float* b, float* out){
-    out[0] = a[1] * b[2] - a[2] * b[1];
-    out[1] = a[2] * b[0] - a[0] * b[2];
-    out[2] = a[0] * b[1] - a[1] * b[0];
+/*
+ * Calculates the dot product of two vectors
+ */
+float dot(pnt a, pnt b){
+    return a.x * b.x +
+           a.y * b.y +
+           a.z * b.z;
 }
 
-float edge_length(float* a){
-    return float(pow(a[0] * a[0] + a[1] * a[1] + a[2] * a[2], 0.5));
+/*
+ * Calculate the angle between planes abc and bcd
+ */
+float torsion_angle(pnt a, pnt b, pnt c, pnt d)
+{
+    pnt ab = vsub(b, a);
+    pnt ac = vsub(c, a);
+    pnt Ua = cross(ab, ac);
+
+    pnt dc = vsub(c, d);
+    pnt db = vsub(b, d);
+    pnt Ub = cross(dc, db);
+
+    float t_angle = acos( dot(Ua, Ub) / (edge_length(Ua) * edge_length(Ub)) );
+    t_angle = 180 - t_angle * (180 / PI)
+
+    return t_angle;
 }
 
-float dot(float* a, float* b){
-    return a[0] * b[0] +
-           a[1] * b[1] +
-           a[2] * b[2];
-}
 
 vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
     vector<struct Peptide> backbone;
@@ -179,39 +167,21 @@ vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
 }
 
 
-/*
- * Setting points a, b, c in a plane, calculates torsion angle of d about the bc axis
- */
-float torsion_angle(struct Point a, struct Point b, struct Point c, struct Point d)
-{
-    float ab[3], ac[3], Ua[3];
-    tovector(a, b, ab);
-    tovector(a, c, ac);
-    cross(ab, ac, Ua);
-
-    float dc[3], db[3], Ub[3];
-    tovector(d, c, dc);
-    tovector(d, b, db);
-    cross(dc, db, Ub);
-
-    float t_angle = acos( dot(Ua, Ub) / (edge_length(Ua) * edge_length(Ub)) );
-
-    return t_angle * (180 / PI);
-}
-
-
 int print_backbone_statistics(vector<struct Peptide> b){
     printf(
         "%s %s %s %s %s %s %s %s %s %s %s\n",
-        "ind", "N-CA", "CA-C", "C-N", "N-CA-C", "CA-C-N+", "C-N+-CA+", "phi", "psi", "omega", "aa"
+        "ind", "aa", "N-CA", "CA-C", "C-N", "N-CA-C", "CA-C-N+", "C-N+-CA+", "phi", "psi", "omega"
     );
     float psi, phi;
     for(int i = 0; i < b.size(); i++){
         bool not_last=(i + 1) < b.size();
         printf(
-            "%d %f %f %f %f %f %f %f %f %f %s\n",
+            "%d %s   %f %f %f   %f %f %f   %f %f %f\n",
             // Peptide number
             i + 1,
+            // residue three letter name
+            b[i].residue,
+
             // N -> CA bond length
             dist(b[i].N, b[i].CA),
             // CA -> C bond length
@@ -231,20 +201,47 @@ int print_backbone_statistics(vector<struct Peptide> b){
             // psi torsion angle - N _ CA _ C _ N+
             not_last ? torsion_angle(b[i].N, b[i].CA, b[i].C, b[i+1].N) : (float)999,
             // omega torsion angle - CA _ C _ N+ _ CA+
-            not_last ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (float)999,
-            // residue three letter name
-            b[i].residue
+            not_last ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (float)999
         );
     }
     return 1;
 }
 
 
-void print_atom(struct Atom a)
+vector<struct Atom> load_pdb_file(char* filename)
 {
-    cout << a.atom_name;
-    cout << "\t(" << a.pos.x << "," << a.pos.y << "," << a.pos.z << ")"; 
-    cout << "\t(" << a.serial_id << "," << a.aa_id << ")" << endl;
+    vector<Atom> atoms;
+    ifstream infile(filename, ios::in);
+    string line;
+    while(getline(infile, line)){
+        if(line.substr(0,4) != "ATOM")
+            continue;
+        struct Atom atom;
+        sscanf(line.c_str(),
+               "%*s %d %5s %3s %*s %d %f %f %f",
+               &atom.serial_id, 
+               atom.atom_name,
+               atom.residue,
+               &atom.aa_id,
+               &atom.pos.x, &atom.pos.y, &atom.pos.z
+              );
+        atoms.push_back(atom);
+    }
+    return atoms;
 }
 
 
+int main(int argc, char* argv[])
+{
+    vector<struct Atom> atoms;
+    // open a file, print its contents
+    if(argc == 2){
+        atoms = load_pdb_file(argv[1]); 
+    } else {
+        cerr << "Please provide a filename" << endl;
+        return 1;
+    }
+    vector<struct Peptide> backbone = get_backbone(atoms);
+    print_backbone_statistics(backbone);
+    return 0;
+}
