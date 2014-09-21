@@ -38,7 +38,6 @@ struct Peptide {
     pnt N;
     pnt CA;
     pnt C;
-    pnt O;
 };
 
 
@@ -95,6 +94,17 @@ pnt vsub(pnt a, pnt b){
 }
 
 /*
+ * Multiply a point by a scalar
+ */
+pnt vmult(pnt a, float x){
+    pnt out;
+    out.x = a.x * x;
+    out.x = a.y * x;
+    out.x = a.z * x;
+    return out;
+}
+
+/*
  * Calculate cross-product of two vectors
  */
 pnt cross(pnt a, pnt b){
@@ -108,7 +118,7 @@ pnt cross(pnt a, pnt b){
 /*
  * Calculate ||v||
  */
-float edge_length(pnt a){
+float magnitude(pnt a){
     return float(pow(a.x * a.x + a.y * a.y + a.z * a.z, 0.5));
 }
 
@@ -126,18 +136,23 @@ float dot(pnt a, pnt b){
  */
 float torsion_angle(pnt a, pnt b, pnt c, pnt d)
 {
+    // Convert to internal coordinates
     pnt ab = vsub(b, a);
     pnt ac = vsub(c, a);
-    pnt Ua = cross(ab, ac);
-
     pnt dc = vsub(c, d);
     pnt db = vsub(b, d);
-    pnt Ub = cross(dc, db);
 
-    float t_angle = acos( dot(Ua, Ub) / (edge_length(Ua) * edge_length(Ub)) );
-    t_angle = 180 - t_angle * (180 / PI)
+    // Get vecors normal to each plane
+    pnt n1 = cross(ab, ac);
+    pnt n2 = cross(dc, db);
 
-    return t_angle;
+    // Calculate torsion angle
+    float t_angle = acos( dot(n1, n2) / (magnitude(n1) * magnitude(n2)) );
+
+    // Calculate sign
+    int sign = sin(dot(n1, dc)) > 0 ? 1 : -1;
+
+    return t_angle * (180 / PI) * sign - sign * 180;
 }
 
 
@@ -157,9 +172,6 @@ vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
         }
         else if(strcmp(atoms[i].atom_name, "C") == 0){
             backbone[j].C = atoms[i].pos;
-        }
-        else if(strcmp(atoms[i].atom_name, "O") == 0){
-            backbone[j].O = atoms[i].pos;
             j++;
         }
     }
@@ -208,12 +220,12 @@ int print_backbone_statistics(vector<struct Peptide> b){
 }
 
 
-vector<struct Atom> load_pdb_file(char* filename)
+vector<struct Atom> load_pdb_file()
 {
     vector<Atom> atoms;
-    ifstream infile(filename, ios::in);
     string line;
-    while(getline(infile, line)){
+    while(cin){
+        getline(cin, line);
         if(line.substr(0,4) != "ATOM")
             continue;
         struct Atom atom;
@@ -235,10 +247,10 @@ int main(int argc, char* argv[])
 {
     vector<struct Atom> atoms;
     // open a file, print its contents
-    if(argc == 2){
-        atoms = load_pdb_file(argv[1]); 
+    if(argc == 1){
+        atoms = load_pdb_file(); 
     } else {
-        cerr << "Please provide a filename" << endl;
+        fprintf(stderr, "Please provide input (from STDIN)\n");
         return 1;
     }
     vector<struct Peptide> backbone = get_backbone(atoms);
