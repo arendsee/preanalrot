@@ -202,13 +202,14 @@ float torsion_angle(struct Point a, struct Point b, struct Point c, struct Point
 
 int print_backbone_statistics(vector<struct Peptide> b){
     printf(
-        "%s %s %s %s %s %s %s %s %s %s\n",
-        "ind", "N-CA", "CA-C", "C-N", "tau", "som", "phi", "psi", "omega", "aa"
+        "%s %s %s %s %s %s %s %s %s %s %s\n",
+        "ind", "N-CA", "CA-C", "C-N", "N-CA-C", "CA-C-N+", "C-N+-CA+", "phi", "psi", "omega", "aa"
     );
     float psi, phi;
     for(int i = 0; i < b.size(); i++){
+        bool not_last=(i + 1) < b.size();
         printf(
-            "%d %f %f %f %f %f %f %f %f %s\n",
+            "%d %f %f %f %f %f %f %f %f %f %s\n",
             // Peptide number
             i + 1,
             // N -> CA bond length
@@ -216,17 +217,21 @@ int print_backbone_statistics(vector<struct Peptide> b){
             // CA -> C bond length
             dist(b[i].CA, b[i].C),
             // C -> N bond length
-            (i+1) < b.size() ? dist(b[i].C, b[i+1].N) : 0,
+            (i+1) < b.size() ? dist(b[i].C, b[i+1].N) : 999,
+
             // N-CA-C angle
             angle(b[i].N, b[i].CA, b[i].C),
-            // CA-C-O angle
-            angle(b[i].CA, b[i].C, b[i].O),
+            // CA-C-N+ angle
+            not_last ? angle(b[i].CA, b[i].C, b[i+1].N) : (float)999,
+            // C-N+-CA+ angle
+            not_last ? angle(b[i].C, b[i+1].N, b[i+1].CA) : (float)999,
+            
             // phi torsion angle - C- _ N _ CA _ C
             i > 0 ? torsion_angle(b[i-1].C, b[i].N, b[i].CA, b[i].C) : (float)999,
             // psi torsion angle - N _ CA _ C _ N+
-            (i + 1) < b.size() ? torsion_angle(b[i].N, b[i].CA, b[i].C, b[i+1].N) : (float)999,
+            not_last ? torsion_angle(b[i].N, b[i].CA, b[i].C, b[i+1].N) : (float)999,
             // omega torsion angle - CA _ C _ N+ _ CA+
-            (i + 1) < b.size() ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (float)999,
+            not_last ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (float)999,
             // residue three letter name
             b[i].residue
         );
