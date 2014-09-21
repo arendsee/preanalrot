@@ -247,13 +247,26 @@ int main(int argc, char* argv[])
 {
     vector<struct Atom> atoms;
     // open a file, print its contents
-    if(argc == 1){
+    if(argc > 1 && strcmp(argv[1], "bstat") == 0){
         atoms = load_pdb_file(); 
-    } else {
-        fprintf(stderr, "Please provide input (from STDIN)\n");
+        vector<struct Peptide> backbone = get_backbone(atoms);
+        print_backbone_statistics(backbone);
+    } 
+    else if(argc > 1 && strcmp(argv[1], "rotate") == 0){ 
+        fprintf(stderr, "not implemented\n");
         return 1;
     }
-    vector<struct Peptide> backbone = get_backbone(atoms);
-    print_backbone_statistics(backbone);
+    else if(argc > 1 && strcmp(argv[1], "chi") == 0){ 
+        fprintf(stderr, "not implemented\n");
+        return 1;
+    }
+    else if(argc > 1 && strcmp(argv[1], "mindist") == 0){ 
+        fprintf(stderr, "not implemented\n");
+        return 1;
+    }
+    else {
+        fprintf(stderr, "Please provide an option [bstat, rotate, chi, mindist]\n");
+        return 1;
+    }
     return 0;
 }
