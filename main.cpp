@@ -38,7 +38,6 @@ struct Peptide {
     pnt N;
     pnt CA;
     pnt C;
-    pnt O;
 };
 
 
@@ -157,10 +156,6 @@ vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
         }
         else if(strcmp(atoms[i].atom_name, "C") == 0){
             backbone[j].C = atoms[i].pos;
-        }
-        else if(strcmp(atoms[i].atom_name, "O") == 0){
-            backbone[j].O = atoms[i].pos;
-            j++;
         }
     }
     return backbone;
