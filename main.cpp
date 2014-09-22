@@ -220,9 +220,114 @@ int print_backbone_statistics(vector<struct Peptide> b){
     return 1;
 }
 
+/*
+ * Get van der Waals radius of given atom (in angstroms)
+ *
+ * TODO I should extend this to handle other elements they may be in ligands,
+ * e.g. Fe
+ */
+float get_radius(struct Atom a){
+    float radius;
+    if(strcmp(a.element, "H") == 0){
+        radius = 1.2; 
+    }
+    else if(strcmp(a.element, "C") == 0){
+        radius = 1.7; 
+    }
+    else if(strcmp(a.element, "O") == 0){
+        radius = 1.52; 
+    }
+    else if(strcmp(a.element, "N") == 0){
+        radius = 1.55; 
+    }
+    else if(strcmp(a.element, "S") == 0){
+        radius = 1.8; 
+    }
+    else{
+        radius = 1.6;
+    }
+    return radius;
+}
 
+/*
+ * Atoms are considered adjacent if
+ * 1) They are the same atom
+ * 2) They are the C and N joining two peptides
+ * 3) They are in the same peptide (exception: the carbonyl oxygen is only
+ *    considered adjacent to the carbonyl carbon)
+ */
+bool are_adjacent(struct Atom a, struct Atom b){
+    // If they are identical, they are considered adjacent
+    if(a.serial_id == b.serial_id){
+        return true;
+    }
+
+
+    // Order inputs be serial id
+    if(a.serial_id > b.serial_id){
+        struct Atom temp = a;
+        a = b;
+        b = temp;
+    }
+
+    // If atoms are the C and N that join peptides, they are adjacent
+    if((strcmp(a.atom_name, "C") && strcmp(b.atom_name, "N") && (b.serial_id == a.serial_id + 1))){
+        return true;
+    }
+
+    // If they are in the same peptide, they are (naively) considered adjacent
+    if(a.aa_id == b.aa_id){
+        // Unless one of the atoms is the carbonyl oxygen (and the other isn't
+        // the carbonyl carbon)
+        if(strcmp(a.atom_name, "O") && ! strcmp(b.atom_name, "C")){
+            false;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+
+/*
+ * Finds the nearest non-adjacent neighbor (see are_adjacent documentation)
+ * Prints the following columns:
+ * 1) Atom-1 name (e.g. CA)
+ * 2) Residue-1 (e.g. MET-1)
+ * 3) Atom-2 name - the name of the nearest non-adjacent atom
+ * 4) Residue-2
+ * 5) distance between the two in angstroms
+ * 6) ratio of the summed van der Waals radii to the distance
+ *    (radius(a) + radius(b)) / distance
+ */
 void print_mindist(vector<struct Atom> a){
-    
+    float d;
+    float vradius;
+    for(int i = 0; i < a.size(); i++){
+        struct Atom ma;
+        float min = 9999;
+        for(int j = 0; j < a.size(); j++){
+            if (are_adjacent(a[i], a[j])){
+                continue;
+            }
+            d = dist(a[i].pos, a[j].pos);
+            if(d < min){
+                min = d;
+                ma = a[j];
+                vradius = get_radius(a[i]) + get_radius(ma);
+            }
+        }
+        printf("%s\t%s-%d\t%s\t%s-%d\t%f\t%f\n",
+                a[i].atom_name,
+                a[i].residue,
+                a[i].aa_id,
+                ma.atom_name,
+                ma.residue,
+                ma.aa_id,
+                min,
+                min / (get_radius(a[i]) + get_radius(ma))
+              );
+    }
 }
 
 
@@ -236,13 +341,13 @@ vector<struct Atom> load_pdb_file()
             continue;
         struct Atom atom;
         sscanf(line.c_str(),
-               "%*s %d %5s %3s %*s %d %f %f %f %*f %*f %*f %1s",
+               "%*s %d %5s %3s %*s %d %f %f %f %*f %*f %3s",
                &atom.serial_id, 
                atom.atom_name,
                atom.residue,
                &atom.aa_id,
                &atom.pos.x, &atom.pos.y, &atom.pos.z,
-               &atom.element
+               atom.element
               );
         atoms.push_back(atom);
     }
