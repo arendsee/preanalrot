@@ -361,36 +361,57 @@ pnt rotate(pnt inpnt, pnt axis_1, pnt axis_2, double angle){
     return rotated;
 }
 
-void print_rotated(int id1, int id2, double angle){
+bool print_rotated(int residue, char * bond, double angle){
+
+    bool is_psi = strcmp(bond, "psi") == 0 ? true : false;
+    bool is_phi = strcmp(bond, "phi") == 0 ? true : false;
+    if(! is_psi && ! is_phi){
+        fprintf(stderr, "I can only rotate the psi and phi angles\n"); 
+        return false;
+    }
+
     string line;
-    int sid = 0;
+    char atom_buffer[5];
+    int rid = 0;
     pnt axis_1, axis_2, c;
+    bool set = false; 
+
+    string first = is_psi ? "CA" : "N";
+    string second = is_psi ? "C" : "CA";
+
     while(cin){
         getline(cin, line);
         if(line.substr(0,4) == "ATOM"){
             pnt p;
             sscanf(line.c_str(),
-                   "%*s %d %*s %*s %*s %*d %lf %lf %lf",
-                   &sid, &p.x, &p.y, &p.z);
-            if(sid == id1){
+                   "%*s %*d %s %*s %*s %d %lf %lf %lf",
+                   atom_buffer, &rid, &p.x, &p.y, &p.z);
+            string atom = string(atom_buffer);
+
+            if(rid == residue && atom == first){
                 axis_1 = p;
             }
-            else if(sid == id2){
+            else if(rid == residue && atom == second){
                 axis_2 = p;
+                set = true;
             }
-            else if(sid > id2){
-                pnt r = rotate(p, axis_1, axis_2, angle);
-
-                printf("%s%8.3f%8.3f%8.3f %s\n",
-                       line.substr(0,30).c_str(),
-                       r.x, r.y, r.z,
-                       line.substr(55,26).c_str()
-                      );
-                continue;
+            // If the bond or rotation has been found, rotate
+            // UNLESS, it is a psi bond AND we are in the bond's peptide
+            else if(set){
+                if(is_phi || (is_psi && (rid != residue || atom == "O"))){
+                    pnt r = rotate(p, axis_1, axis_2, angle);
+                    printf("%s%8.3f%8.3f%8.3f %s\n",
+                           line.substr(0,30).c_str(),
+                           r.x, r.y, r.z,
+                           line.substr(55,26).c_str()
+                          );
+                    continue;
+                }
             }
         }
         printf("%s\n", line.c_str());
     }
+    return true;
 }
 
 
@@ -428,11 +449,16 @@ int main(int argc, char* argv[])
         print_backbone_statistics(backbone);
     } 
     else if(argc > 1 && strcmp(argv[1], "rotate") == 0){ 
-        if(! argc == 5){
-            fprintf(stderr, "'rotate' requires 3 arguments: serial_id-1 serial_id-2 angle\n");
+        if(argc == 5){
+            if(! print_rotated(atoi(argv[2]), argv[3], atof(argv[4])) ){
+                return 1;
+            }
+        }
+        else {
+            fprintf(stderr, "'rotate' requires 3 arguments:\n");
+            fprintf(stderr, "1) residue number\n2) bond['psi' or 'phi']\n3) rotation angle\n");
             return 1;
         }
-        print_rotated(atoi(argv[2]), atoi(argv[3]), atof(argv[4]));
     }
     else if(argc > 1 && strcmp(argv[1], "chi") == 0){ 
         fprintf(stderr, "not implemented\n");
