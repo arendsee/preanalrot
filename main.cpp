@@ -23,6 +23,15 @@ struct Point
 };
 typedef struct Point pnt;
 
+/*
+ * Represents a transformation matrix where a, b, and c are rows
+ */
+struct Transmat
+{
+    pnt a;
+    pnt b;
+    pnt c;
+};
 
 struct Atom
 {
@@ -47,7 +56,7 @@ struct Peptide {
  * TODO delete this debugging function
  */
 void ppnt(pnt p){
-    printf("%f, %f, %f\n", p.x, p.y, p.x); 
+    printf("%f, %f, %f\n", p.x, p.y, p.z); 
 }
 
 /*
@@ -101,8 +110,8 @@ pnt vsub(pnt a, pnt b){
 pnt vmult(pnt a, float x){
     pnt out;
     out.x = a.x * x;
-    out.x = a.y * x;
-    out.x = a.z * x;
+    out.y = a.y * x;
+    out.z = a.z * x;
     return out;
 }
 
@@ -250,6 +259,7 @@ float get_radius(struct Atom a){
     return radius;
 }
 
+
 /*
  * Atoms are considered adjacent if
  * 1) They are the same atom
@@ -332,20 +342,51 @@ void print_mindist(vector<struct Atom> a){
 }
 
 
-pnt rotate(pnt a, pnt b, pnt c, float angle){
-    return c;
+pnt rotate(pnt p, struct Transmat m){
+    pnt r;
+    r.x = p.x * m.a.x + p.y * m.b.x + p.z * m.c.x;
+    r.y = p.x * m.a.y + p.y * m.b.y + p.z * m.c.y;
+    r.z = p.x * m.a.z + p.y * m.b.z + p.z * m.c.z;
+    return r;
+}
+
+struct Transmat make_transmat(pnt p1, pnt p2, float angle){
+    struct Transmat m;
+
+    pnt u = vsub(p2, p1);
+    // Convert to unit vector
+    u = vmult(u, 1 / magnitude(u));
+
+    float t = angle * ( PI / 180 );
+    float ct = cos(t);
+    float st = sin(t);
+
+    // row 1
+    m.a.x = ct + u.x * u.x * (1 - ct);
+    m.a.y = u.x * u.y * (1 - ct) - u.z * st;
+    m.a.z = u.x * u.z * (1 - ct) + u.y * st;
+
+    // row 2
+    m.b.x = u.y * u.x * (1 - ct) + u.z * st;
+    m.b.y = ct + u.y * u.y * (1 - ct);
+    m.b.z = u.y * u.z * (1 - ct) - u.x * st;
+
+    // row 3
+    m.c.x = u.z * u.x * (1 - ct) - u.y * st;
+    m.c.y = u.z * u.y * (1 - ct) + u.x * st;
+    m.c.z = ct + u.z * u.z * (1 - ct);
+
+    return m;
 }
 
 void print_rotated(int id1, int id2, float angle){
     string line;
     int sid = 0;
     pnt axis_1, axis_2, c;
+    struct Transmat m;
     while(cin){
         getline(cin, line);
-        if(line.substr(0,4) != "ATOM"){
-            printf("%s\n", line.c_str());
-        }
-        else{
+        if(line.substr(0,4) == "ATOM"){
             pnt p;
             sscanf(line.c_str(),
                    "%*s %d %*s %*s %*s %*d %f %f %f",
@@ -355,9 +396,10 @@ void print_rotated(int id1, int id2, float angle){
             }
             else if(sid == id2){
                 axis_2 = p;
+                m = make_transmat(axis_1, axis_2, angle);
             }
             else if(sid > id2){
-                pnt r = rotate(axis_1, axis_2, p, angle);
+                pnt r = rotate(p, m);
                 printf("%s%8.3f%8.3f%8.3f %s\n",
                        line.substr(0,30).c_str(),
                        r.x, r.y, r.z,
@@ -365,8 +407,8 @@ void print_rotated(int id1, int id2, float angle){
                       );
                 continue;
             }
-            printf("%s\n", line.c_str());
         }
+        printf("%s\n", line.c_str());
     }
 }
 
