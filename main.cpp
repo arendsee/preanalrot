@@ -5,7 +5,6 @@
 
 #include <math.h>
 #include <iostream>
-#include <fstream>
 #include <string.h>
 #include <vector>
 #include <stdio.h>
@@ -15,11 +14,8 @@ using namespace std;
 const double PI = acos(-1);
 
 
-struct Point
-{
-    double x;
-    double y;
-    double z;
+struct Point {
+    double x, y, z;
 };
 typedef struct Point pnt;
 
@@ -37,9 +33,7 @@ struct Atom
 
 struct Peptide {
     char residue[4];
-    pnt N;
-    pnt CA;
-    pnt C;
+    pnt N, CA, C;
 };
 
 
@@ -398,6 +392,7 @@ bool print_rotated(int residue, char * bond, double theta){
             }
             // If the bond or rotation has been found, rotate
             // UNLESS, it is a psi bond AND we are in the bond's peptide
+            // but the element is NOT the carbonyl oxygen
             else if(set){
                 if(is_phi || (is_psi && (rid != residue || atom == "O"))){
                     pnt r = rotate(p, axis_1, axis_2, theta);
@@ -415,12 +410,6 @@ bool print_rotated(int residue, char * bond, double theta){
     return true;
 }
 
-    // pnt pos;
-    // char residue[4];
-    // char element[3];
-    // char atom_name[5];
-    // int serial_id;
-    // int aa_id;
 
 bool print_chi(vector<Atom> atom){
     vector<Atom> four;
