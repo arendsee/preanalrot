@@ -44,13 +44,6 @@ struct Peptide {
 
 
 /*
- * TODO delete this debugging function
- */
-void ppnt(pnt p){
-    printf("%lf, %lf, %lf\n", p.x, p.y, p.z); 
-}
-
-/*
  * Calculate distance between two points
  */
 double dist(pnt a, pnt b)
@@ -333,32 +326,32 @@ void print_mindist(vector<struct Atom> a){
 }
 
 
-pnt rotate(pnt inpnt, pnt axis_1, pnt axis_2, double angle){
+pnt rotate(pnt p, pnt axis_1, pnt axis_2, double angle){
+    double t = angle * ( PI / 180 );
     pnt u = vsub(axis_2, axis_1);
     u = vmult(u, 1 / magnitude(u));
-    pnt p = vsub(inpnt, axis_1);
+    
+    p = vsub(p, axis_1);
+    
+    double ct = cos(t);
+    double st = sin(t);
+    
+    pnt q;
+    q.x = p.x * (ct + (1 - ct) * u.x * u.x) +
+          p.y * ((1 - ct) * u.x * u.y - u.z * st) +
+          p.z * ((1 - ct) * u.x * u.z + u.y * st);
+    
+    q.y = p.x * ((1 - ct) * u.x * u.y + u.z * st) +
+          p.y * (ct + (1 - ct) * u.y * u.y) +
+          p.z * ((1 - ct) * u.y * u.z - u.x * st);
+    
+    q.z = p.x * ((1 - ct) * u.x * u.z - u.y * st) +
+          p.y * ((1 - ct) * u.y * u.z + u.x * st) +
+          p.z * (ct + (1 - ct) * u.z * u.z);
+    
+    q = vadd(q, axis_1);
 
-    double t = angle * ( PI / 180 );
-    double ct = cos(angle);
-    double st = sin(angle);
-
-    pnt r;
-
-    r.x = p.x * (ct + u.x * u.x * (1 - ct)) +
-          p.y * (u.x * u.y * (1 - ct) - u.z * st) +
-          p.z * (u.x * u.z * (1 - ct) + u.y * st);
-
-    r.y = p.x * (u.y * u.x * (1 - ct) + u.z * st) +
-          p.y * (ct + u.y * u.y * (1 - ct)) +
-          p.z * (u.y * u.z * (1 - ct) - u.x * st);
-
-    r.z = p.x * (u.z * u.x * (1 - ct) - u.y * st) +
-          p.y * (u.z * u.y * (1 - ct) + u.x * st) +
-          p.z * (ct + u.z * u.z * (1 - ct));
-   
-    pnt rotated = vadd(r, axis_1);
-
-    return rotated;
+    return(q);
 }
 
 bool print_rotated(int residue, char * bond, double angle){
