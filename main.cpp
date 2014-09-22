@@ -512,6 +512,14 @@ vector<struct Atom> load_pdb_file()
 }
 
 
+void print_usage(){
+    fprintf(stderr, "Usage: subcommand [arguments] < STDIN\n");
+    fprintf(stderr, "./a.out bstat < in.pdb\n");
+    fprintf(stderr, "./a.out rotate [residue number] [phi|psi] [angle] < in.pdb\n");
+    fprintf(stderr, "./a.out mindist < in.pdb\n");
+    fprintf(stderr, "./a.out chi < in.pdb\n");
+}
+
 int main(int argc, char* argv[])
 {
     vector<struct Atom> atoms;
@@ -519,10 +527,9 @@ int main(int argc, char* argv[])
 
     if(argc > 1){
         subcommand = argv[1];
-    }
-    else {
-        fprintf(stderr, "Please provide an option [bstat, rotate, chi, mindist]\n");
-        return 1;
+    } else {
+        print_usage();
+        return 0;
     }
 
     // Prints the bond lengths and backbone angles
@@ -553,6 +560,13 @@ int main(int argc, char* argv[])
     else if(subcommand == "mindist"){ 
         atoms = load_pdb_file(); 
         print_mindist(atoms);
+    }
+    // If you want help ...
+    else if(subcommand == "-h" || subcommand == "-help" || subcommand == "-help"){
+        print_usage();
+    }
+    else {
+        print_usage();
     }
     return 0;
 }
