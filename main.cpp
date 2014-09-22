@@ -23,15 +23,6 @@ struct Point
 };
 typedef struct Point pnt;
 
-/*
- * Represents a transformation matrix where a, b, and c are rows
- */
-struct Transmat
-{
-    pnt a;
-    pnt b;
-    pnt c;
-};
 
 struct Atom
 {
@@ -342,48 +333,38 @@ void print_mindist(vector<struct Atom> a){
 }
 
 
-pnt rotate(pnt p, struct Transmat m){
-    pnt r;
-    r.x = p.x * m.a.x + p.y * m.b.x + p.z * m.c.x;
-    r.y = p.x * m.a.y + p.y * m.b.y + p.z * m.c.y;
-    r.z = p.x * m.a.z + p.y * m.b.z + p.z * m.c.z;
-    return r;
-}
-
-struct Transmat make_transmat(pnt p1, pnt p2, double angle){
-    struct Transmat m;
-
-    pnt u = vsub(p2, p1);
-    // Convert to unit vector
+pnt rotate(pnt inpnt, pnt axis_1, pnt axis_2, double angle){
+    pnt u = vsub(axis_2, axis_1);
     u = vmult(u, 1 / magnitude(u));
+    pnt p = vsub(inpnt, axis_1);
 
     double t = angle * ( PI / 180 );
-    double ct = cos(t);
-    double st = sin(t);
+    double ct = cos(angle);
+    double st = sin(angle);
 
-    // row 1
-    m.a.x = ct + u.x * u.x * (1 - ct);
-    m.a.y = u.x * u.y * (1 - ct) - u.z * st;
-    m.a.z = u.x * u.z * (1 - ct) + u.y * st;
+    pnt r;
 
-    // row 2
-    m.b.x = u.y * u.x * (1 - ct) + u.z * st;
-    m.b.y = ct + u.y * u.y * (1 - ct);
-    m.b.z = u.y * u.z * (1 - ct) - u.x * st;
+    r.x = p.x * (ct + u.x * u.x * (1 - ct)) +
+          p.y * (u.x * u.y * (1 - ct) - u.z * st) +
+          p.z * (u.x * u.z * (1 - ct) + u.y * st);
 
-    // row 3
-    m.c.x = u.z * u.x * (1 - ct) - u.y * st;
-    m.c.y = u.z * u.y * (1 - ct) + u.x * st;
-    m.c.z = ct + u.z * u.z * (1 - ct);
+    r.y = p.x * (u.y * u.x * (1 - ct) + u.z * st) +
+          p.y * (ct + u.y * u.y * (1 - ct)) +
+          p.z * (u.y * u.z * (1 - ct) - u.x * st);
 
-    return m;
+    r.z = p.x * (u.z * u.x * (1 - ct) - u.y * st) +
+          p.y * (u.z * u.y * (1 - ct) + u.x * st) +
+          p.z * (ct + u.z * u.z * (1 - ct));
+   
+    pnt rotated = vadd(r, axis_1);
+
+    return rotated;
 }
 
 void print_rotated(int id1, int id2, double angle){
     string line;
     int sid = 0;
     pnt axis_1, axis_2, c;
-    struct Transmat m;
     while(cin){
         getline(cin, line);
         if(line.substr(0,4) == "ATOM"){
@@ -396,10 +377,10 @@ void print_rotated(int id1, int id2, double angle){
             }
             else if(sid == id2){
                 axis_2 = p;
-                m = make_transmat(axis_1, axis_2, angle);
             }
             else if(sid > id2){
-                pnt r = rotate(p, m);
+                pnt r = rotate(p, axis_1, axis_2, angle);
+
                 printf("%s%8.3f%8.3f%8.3f %s\n",
                        line.substr(0,30).c_str(),
                        r.x, r.y, r.z,
