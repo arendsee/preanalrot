@@ -9,6 +9,7 @@
 #include <string.h>
 #include <vector>
 #include <stdio.h>
+#include <cstdlib>
 using namespace std;
 
 const float PI = acos(-1);
@@ -331,6 +332,45 @@ void print_mindist(vector<struct Atom> a){
 }
 
 
+pnt rotate(pnt a, pnt b, pnt c, float angle){
+    return c;
+}
+
+void print_rotated(int id1, int id2, float angle){
+    string line;
+    int sid = 0;
+    pnt axis_1, axis_2, c;
+    while(cin){
+        getline(cin, line);
+        if(line.substr(0,4) != "ATOM"){
+            printf("%s\n", line.c_str());
+        }
+        else{
+            pnt p;
+            sscanf(line.c_str(),
+                   "%*s %d %*s %*s %*s %*d %f %f %f",
+                   &sid, &p.x, &p.y, &p.z);
+            if(sid == id1){
+                axis_1 = p;
+            }
+            else if(sid == id2){
+                axis_2 = p;
+            }
+            else if(sid > id2){
+                pnt r = rotate(axis_1, axis_2, p, angle);
+                printf("%s%8.3f%8.3f%8.3f %s\n",
+                       line.substr(0,30).c_str(),
+                       r.x, r.y, r.z,
+                       line.substr(55,26).c_str()
+                      );
+                continue;
+            }
+            printf("%s\n", line.c_str());
+        }
+    }
+}
+
+
 vector<struct Atom> load_pdb_file()
 {
     vector<Atom> atoms;
@@ -365,8 +405,11 @@ int main(int argc, char* argv[])
         print_backbone_statistics(backbone);
     } 
     else if(argc > 1 && strcmp(argv[1], "rotate") == 0){ 
-        fprintf(stderr, "not implemented\n");
-        return 1;
+        if(! argc == 5){
+            fprintf(stderr, "'rotate' requires 3 arguments: serial_id-1 serial_id-2 angle\n");
+            return 1;
+        }
+        print_rotated(atoi(argv[2]), atoi(argv[3]), atof(argv[4]));
     }
     else if(argc > 1 && strcmp(argv[1], "chi") == 0){ 
         fprintf(stderr, "not implemented\n");
