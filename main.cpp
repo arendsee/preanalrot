@@ -12,14 +12,14 @@
 #include <cstdlib>
 using namespace std;
 
-const float PI = acos(-1);
+const double PI = acos(-1);
 
 
 struct Point
 {
-    float x;
-    float y;
-    float z;
+    double x;
+    double y;
+    double z;
 };
 typedef struct Point pnt;
 
@@ -56,13 +56,13 @@ struct Peptide {
  * TODO delete this debugging function
  */
 void ppnt(pnt p){
-    printf("%f, %f, %f\n", p.x, p.y, p.z); 
+    printf("%lf, %lf, %lf\n", p.x, p.y, p.z); 
 }
 
 /*
  * Calculate distance between two points
  */
-float dist(pnt a, pnt b)
+double dist(pnt a, pnt b)
 {
     return sqrt((a.x - b.x) * (a.x - b.x) + 
                 (a.y - b.y) * (a.y - b.y) +
@@ -72,12 +72,12 @@ float dist(pnt a, pnt b)
 /*
  * Solve for the angle between points a, b, and c
  */
-float angle(pnt a, pnt b, pnt c)
+double angle(pnt a, pnt b, pnt c)
 {
-    float ab = dist(a, b);
-    float bc = dist(b, c);
-    float ac = dist(a, c);
-    float theta = acos((ab * ab + bc * bc - ac * ac ) / (2 * bc * ac));
+    double ab = dist(a, b);
+    double bc = dist(b, c);
+    double ac = dist(a, c);
+    double theta = acos((ab * ab + bc * bc - ac * ac ) / (2 * bc * ac));
     return theta * (180 / PI);
 }
 
@@ -107,7 +107,7 @@ pnt vsub(pnt a, pnt b){
 /*
  * Multiply a point by a scalar
  */
-pnt vmult(pnt a, float x){
+pnt vmult(pnt a, double x){
     pnt out;
     out.x = a.x * x;
     out.y = a.y * x;
@@ -129,14 +129,14 @@ pnt cross(pnt a, pnt b){
 /*
  * Calculate ||v||
  */
-float magnitude(pnt a){
-    return float(pow(a.x * a.x + a.y * a.y + a.z * a.z, 0.5));
+double magnitude(pnt a){
+    return double(pow(a.x * a.x + a.y * a.y + a.z * a.z, 0.5));
 }
 
 /*
  * Calculates the dot product of two vectors
  */
-float dot(pnt a, pnt b){
+double dot(pnt a, pnt b){
     return a.x * b.x +
            a.y * b.y +
            a.z * b.z;
@@ -145,7 +145,7 @@ float dot(pnt a, pnt b){
 /*
  * Calculate the angle between planes abc and bcd
  */
-float torsion_angle(pnt a, pnt b, pnt c, pnt d)
+double torsion_angle(pnt a, pnt b, pnt c, pnt d)
 {
     // Convert to internal coordinates
     pnt ab = vsub(b, a);
@@ -158,7 +158,7 @@ float torsion_angle(pnt a, pnt b, pnt c, pnt d)
     pnt n2 = cross(dc, db);
 
     // Calculate torsion angle
-    float t_angle = acos( dot(n1, n2) / (magnitude(n1) * magnitude(n2)) );
+    double t_angle = acos( dot(n1, n2) / (magnitude(n1) * magnitude(n2)) );
 
     // Calculate sign
     int sign = sin(dot(n1, dc)) > 0 ? 1 : -1;
@@ -195,7 +195,7 @@ int print_backbone_statistics(vector<struct Peptide> b){
         "%s %s %s %s %s %s %s %s %s %s %s\n",
         "ind", "aa", "N-CA", "CA-C", "C-N", "N-CA-C", "CA-C-N+", "C-N+-CA+", "phi", "psi", "omega"
     );
-    float psi, phi;
+    double psi, phi;
     for(int i = 0; i < b.size(); i++){
         bool not_last=(i + 1) < b.size();
         printf(
@@ -215,16 +215,16 @@ int print_backbone_statistics(vector<struct Peptide> b){
             // N-CA-C angle
             angle(b[i].N, b[i].CA, b[i].C),
             // CA-C-N+ angle
-            not_last ? angle(b[i].CA, b[i].C, b[i+1].N) : (float)999,
+            not_last ? angle(b[i].CA, b[i].C, b[i+1].N) : (double)999,
             // C-N+-CA+ angle
-            not_last ? angle(b[i].C, b[i+1].N, b[i+1].CA) : (float)999,
+            not_last ? angle(b[i].C, b[i+1].N, b[i+1].CA) : (double)999,
             
             // phi torsion angle - C- _ N _ CA _ C
-            i > 0 ? torsion_angle(b[i-1].C, b[i].N, b[i].CA, b[i].C) : (float)999,
+            i > 0 ? torsion_angle(b[i-1].C, b[i].N, b[i].CA, b[i].C) : (double)999,
             // psi torsion angle - N _ CA _ C _ N+
-            not_last ? torsion_angle(b[i].N, b[i].CA, b[i].C, b[i+1].N) : (float)999,
+            not_last ? torsion_angle(b[i].N, b[i].CA, b[i].C, b[i+1].N) : (double)999,
             // omega torsion angle - CA _ C _ N+ _ CA+
-            not_last ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (float)999
+            not_last ? torsion_angle(b[i].CA, b[i].C, b[i+1].N, b[i+1].CA) : (double)999
         );
     }
     return 1;
@@ -236,8 +236,8 @@ int print_backbone_statistics(vector<struct Peptide> b){
  * TODO I should extend this to handle other elements they may be in ligands,
  * e.g. Fe
  */
-float get_radius(struct Atom a){
-    float radius;
+double get_radius(struct Atom a){
+    double radius;
     if(strcmp(a.element, "H") == 0){
         radius = 1.2; 
     }
@@ -312,11 +312,11 @@ bool are_adjacent(struct Atom a, struct Atom b){
  *    (radius(a) + radius(b)) / distance
  */
 void print_mindist(vector<struct Atom> a){
-    float d;
-    float vradius;
+    double d;
+    double vradius;
     for(int i = 0; i < a.size(); i++){
         struct Atom ma;
-        float min = 9999;
+        double min = 9999;
         for(int j = 0; j < a.size(); j++){
             if (are_adjacent(a[i], a[j])){
                 continue;
@@ -350,16 +350,16 @@ pnt rotate(pnt p, struct Transmat m){
     return r;
 }
 
-struct Transmat make_transmat(pnt p1, pnt p2, float angle){
+struct Transmat make_transmat(pnt p1, pnt p2, double angle){
     struct Transmat m;
 
     pnt u = vsub(p2, p1);
     // Convert to unit vector
     u = vmult(u, 1 / magnitude(u));
 
-    float t = angle * ( PI / 180 );
-    float ct = cos(t);
-    float st = sin(t);
+    double t = angle * ( PI / 180 );
+    double ct = cos(t);
+    double st = sin(t);
 
     // row 1
     m.a.x = ct + u.x * u.x * (1 - ct);
@@ -379,7 +379,7 @@ struct Transmat make_transmat(pnt p1, pnt p2, float angle){
     return m;
 }
 
-void print_rotated(int id1, int id2, float angle){
+void print_rotated(int id1, int id2, double angle){
     string line;
     int sid = 0;
     pnt axis_1, axis_2, c;
@@ -389,7 +389,7 @@ void print_rotated(int id1, int id2, float angle){
         if(line.substr(0,4) == "ATOM"){
             pnt p;
             sscanf(line.c_str(),
-                   "%*s %d %*s %*s %*s %*d %f %f %f",
+                   "%*s %d %*s %*s %*s %*d %lf %lf %lf",
                    &sid, &p.x, &p.y, &p.z);
             if(sid == id1){
                 axis_1 = p;
@@ -423,7 +423,7 @@ vector<struct Atom> load_pdb_file()
             continue;
         struct Atom atom;
         sscanf(line.c_str(),
-               "%*s %d %5s %3s %*s %d %f %f %f %*f %*f %3s",
+               "%*s %d %5s %3s %*s %d %lf %lf %lf %*lf %*lf %3s",
                &atom.serial_id, 
                atom.atom_name,
                atom.residue,
