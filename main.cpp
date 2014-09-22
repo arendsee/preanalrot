@@ -176,14 +176,14 @@ vector<struct Peptide> get_backbone(vector<struct Atom> atoms){
 
 int print_backbone_statistics(vector<struct Peptide> b){
     printf(
-        "%s %s %s %s %s %s %s %s %s %s %s\n",
-        "ind", "aa", "N-CA", "CA-C", "C-N", "N-CA-C", "CA-C-N+", "C-N+-CA+", "phi", "psi", "omega"
+        "%s %s %s %s %s %s %s %s %s %s %s %s\n",
+        "ind", "aa", "N-CA", "CA-C", "C-N", "CA-CA", "N-CA-C", "CA-C-N+", "C-N+-CA+", "phi", "psi", "omega"
     );
     double psi, phi;
     for(int i = 0; i < b.size(); i++){
         bool not_last=(i + 1) < b.size();
         printf(
-            "%d %s   %f %f %f   %f %f %f   %f %f %f\n",
+            "%d %s %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
             // Peptide number
             i + 1,
             // residue three letter name
@@ -194,7 +194,9 @@ int print_backbone_statistics(vector<struct Peptide> b){
             // CA -> C bond length
             dist(b[i].CA, b[i].C),
             // C -> N bond length
-            (i+1) < b.size() ? dist(b[i].C, b[i+1].N) : 999,
+            not_last ? dist(b[i].C, b[i+1].N) : 999,
+            // CA - CA bond length
+            not_last ? dist(b[i].CA, b[i+1].CA) : 999,
 
             // N-CA-C angle
             angle(b[i].N, b[i].CA, b[i].C),
@@ -326,12 +328,15 @@ void print_mindist(vector<struct Atom> a){
 }
 
 
-pnt rotate(pnt p, pnt axis_1, pnt axis_2, double angle){
-    double t = angle * ( PI / 180 );
-    pnt u = vsub(axis_2, axis_1);
+/*
+ * Rotate point p theta degrees about the axis formed by points a and c
+ */
+pnt rotate(pnt p, pnt a, pnt b, double theta){
+    double t = theta * ( PI / 180 );
+    pnt u = vsub(b, a);
     u = vmult(u, 1 / magnitude(u));
     
-    p = vsub(p, axis_1);
+    p = vsub(p, a);
     
     double ct = cos(t);
     double st = sin(t);
@@ -349,12 +354,15 @@ pnt rotate(pnt p, pnt axis_1, pnt axis_2, double angle){
           p.y * ((1 - ct) * u.y * u.z + u.x * st) +
           p.z * (ct + (1 - ct) * u.z * u.z);
     
-    q = vadd(q, axis_1);
+    q = vadd(q, a);
 
     return(q);
 }
 
-bool print_rotated(int residue, char * bond, double angle){
+/*
+ * Handle rotation logic and print output
+ */
+bool print_rotated(int residue, char * bond, double theta){
 
     bool is_psi = strcmp(bond, "psi") == 0 ? true : false;
     bool is_phi = strcmp(bond, "phi") == 0 ? true : false;
@@ -392,7 +400,7 @@ bool print_rotated(int residue, char * bond, double angle){
             // UNLESS, it is a psi bond AND we are in the bond's peptide
             else if(set){
                 if(is_phi || (is_psi && (rid != residue || atom == "O"))){
-                    pnt r = rotate(p, axis_1, axis_2, angle);
+                    pnt r = rotate(p, axis_1, axis_2, theta);
                     printf("%s%8.3f%8.3f%8.3f %s\n",
                            line.substr(0,30).c_str(),
                            r.x, r.y, r.z,
@@ -405,6 +413,78 @@ bool print_rotated(int residue, char * bond, double angle){
         printf("%s\n", line.c_str());
     }
     return true;
+}
+
+    // pnt pos;
+    // char residue[4];
+    // char element[3];
+    // char atom_name[5];
+    // int serial_id;
+    // int aa_id;
+
+bool print_chi(vector<Atom> atom){
+    vector<Atom> four;
+    string name;
+    int nchi = 0;
+    for(int i = 0; i < atom.size(); i++){
+        name = atom[i].atom_name; 
+        bool poop = true;
+        if(name == "N"){
+            four.clear();
+            four.push_back(atom[i]);
+            poop = false;
+        } 
+        else if(name == "CA" || name == "CB"){
+            four.push_back(atom[i]);
+            poop = false;
+        }
+        // Chi1
+        else if(name == "CG" || name == "SG" || name == "CG1" || name == "OG" || name == "OG1"){
+            four.push_back(atom[i]);
+            nchi = 1;
+        }
+        // Chi2
+        else if(name == "CD" || name == "OD1" || name == "ND1" || name == "SD"){
+            four.push_back(atom[i]);
+            nchi = 2;
+        }
+        // Chi3
+        else if(name == "NE" || name == "OE1" || name == "CE"){
+            four.push_back(atom[i]);
+            nchi = 3;
+        }
+        // Chi4
+        else if(name == "CZ" || name == "NZ"){
+            four.push_back(atom[i]);
+            nchi = 4;
+        }
+        // Chi5
+        else if(name == "Nh1"){
+            four.push_back(atom[i]);
+            nchi = 5;
+        }
+        else{
+            poop = false;
+        }
+
+        if(poop){
+            int s = four.size();
+            printf("%s-%d %s-%s-%s-%s chi%d %f\n",
+                   atom[i].residue,
+                   atom[i].aa_id,
+                   four[s-4].atom_name,
+                   four[s-3].atom_name,
+                   four[s-2].atom_name,
+                   four[s-1].atom_name,
+                   nchi,
+                   torsion_angle(four[s-4].pos,
+                                 four[s-3].pos,
+                                 four[s-2].pos,
+                                 four[s-1].pos)
+                );
+            poop = false;
+        }
+    }
 }
 
 
@@ -435,13 +515,24 @@ vector<struct Atom> load_pdb_file()
 int main(int argc, char* argv[])
 {
     vector<struct Atom> atoms;
-    // open a file, print its contents
-    if(argc > 1 && strcmp(argv[1], "bstat") == 0){
+    string subcommand;
+
+    if(argc > 1){
+        subcommand = argv[1];
+    }
+    else {
+        fprintf(stderr, "Please provide an option [bstat, rotate, chi, mindist]\n");
+        return 1;
+    }
+
+    // Prints the bond lengths and backbone angles
+    if(subcommand == "bstat"){
         atoms = load_pdb_file(); 
         vector<struct Peptide> backbone = get_backbone(atoms);
         print_backbone_statistics(backbone);
     } 
-    else if(argc > 1 && strcmp(argv[1], "rotate") == 0){ 
+    // Rotates about the psi or phi bond of the given residue
+    else if(subcommand == "rotate"){ 
         if(argc == 5){
             if(! print_rotated(atoi(argv[2]), argv[3], atof(argv[4])) ){
                 return 1;
@@ -453,17 +544,15 @@ int main(int argc, char* argv[])
             return 1;
         }
     }
-    else if(argc > 1 && strcmp(argv[1], "chi") == 0){ 
-        fprintf(stderr, "not implemented\n");
-        return 1;
+    // Calculates chi torsion angles for all side chains
+    else if(subcommand == "chi"){ 
+        atoms = load_pdb_file(); 
+        print_chi(atoms);
     }
-    else if(argc > 1 && strcmp(argv[1], "mindist") == 0){ 
+    // Calculates each atom's nearest neighbor
+    else if(subcommand == "mindist"){ 
         atoms = load_pdb_file(); 
         print_mindist(atoms);
-    }
-    else {
-        fprintf(stderr, "Please provide an option [bstat, rotate, chi, mindist]\n");
-        return 1;
     }
     return 0;
 }
